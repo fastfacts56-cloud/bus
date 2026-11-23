@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Driver dashboard &middot; School Bus Tracker{% endblock %}
+{% block body_class %}driver-body{% endblock %}
+
+{% block body %}
+<header class="driver-topbar">
+  <div class="brand brand-small">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M4 16V7a2 2 0 0 1 2-2h9l5 5v6"/><path d="M4 16h16M7 16v2m10-2v2"/>
+        <path d="M6 9h7M15 9h2v3h-5"/><circle cx="7.5" cy="16" r="1"/><circle cx="16.5" cy="16" r="1"/>
+      </svg>
+    </div>
+    <div><strong>Driver</strong><span>{{ current_user.name }}</span></div>
+  </div>
+  <form method="post" action="{{ url_for('auth.logout') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-ghost btn-sm" type="submit">Logout</button>
+  </form>
+</header>
+
+<main class="driver-main">
+  {% include "_flash.html" %}
+
+  {% if not bus %}
+    <section class="card center-card">
+      <div class="empty-icon">&#128666;</div>
+      <h1>No bus assigned</h1>
+      <p class="muted">Your driver account is active, but the admin has not assigned a bus to you yet.</p>
+      <p class="muted small">Contact the school admin. You will be able to start trips once a bus is assigned.</p>
+    </section>
+  {% else %}
+    <div class="driver-grid">
+      <section class="driver-map-card">
+        <div class="driver-map" id="driver-map"></div>
+        <div class="map-chip" id="driver-gps-chip">
+          <span class="live-dot" id="driver-gps-dot"></span>
+          <span id="driver-gps-label">Checking GPS...</span>
+        </div>
+      </section>
+
+      <section class="driver-panel">
+        <div class="driver-bus-card">
+          <span class="eyebrow">Assigned bus</span>
+          <h1>{{ bus.name }}</h1>
+          <p class="mono">{{ bus.registration_number }}</p>
+          <p class="muted">{{ bus.route_name or "No route assigned to this bus" }}</p>
+        </div>
+
+        <div id="driver-alert" class="alert alert-error hidden"></div>
+
+        <div class="status-card">
+          <div class="status-row">
+            <span>GPS device</span>
+            <strong id="driver-device-status">Checking...</strong>
+          </div>
+          <div class="status-row">
+            <span>Last GPS update</span>
+            <strong id="driver-gps-time">—</strong>
+          </div>
+          <div class="status-row">
+            <span>Current speed</span>
+            <strong id="driver-speed">—</strong>
+          </div>
+          <div class="status-row">
+            <span>GPS accuracy</span>
+            <strong id="driver-accuracy">—</strong>
+          </div>
+        </div>
+
+        <div id="trip-active-panel" class="trip-panel hidden">
+          <span class="badge badge-info" id="trip-type-badge">Active trip</span>
+          <h2 id="trip-type-title">Trip running</h2>
+          <p class="muted" id="trip-started-at"></p>
+          <div class="trip-pulse"><span class="live-dot"></span> GPS updates are being accepted</div>
+          <button class="btn btn-danger btn-xl btn-block" type="button" id="end-trip-btn">End Trip</button>
+        </div>
+
+        <div id="trip-idle-panel" class="trip-panel">
+          <h2>Ready to drive?</h2>
+          <p class="muted">Start a trip before leaving. The GPS only records data during an active trip.</p>
+          {% if not bus.route_name %}
+            <div class="alert alert-warning">No route is assigned. Ask the admin to assign one before starting a trip.</div>
+          {% endif %}
+          <button class="btn btn-primary btn-xl btn-block" type="button" id="start-trip-btn" {{ "disabled" if not bus.route_name }}>Start Trip</button>
+        </div>
+
+        <p class="muted small">All trip actions are checked on the server. You can only control the bus assigned to you.</p>
+      </section>
+    </div>
+  {% endif %}
+</main>
+
+<dialog class="modal" id="trip-dialog">
+  <div class="modal-head">
+    <div>
+      <h2>Choose trip type</h2>
+      <p class="muted">Select the direction for this trip.</p>
+    </div>
+    <button class="icon-btn" type="button" data-close-dialog aria-label="Close">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div class="trip-choice">
+      <button class="trip-choice-btn" type="button" data-trip-type="morning">
+        <span class="trip-choice-icon">&#9728;</span>
+        <strong>Morning Pickup</strong>
+        <span>Towards school &middot; students board at stops</span>
+      </button>
+      <button class="trip-choice-btn" type="button" data-trip-type="afternoon">
+        <span class="trip-choice-icon">&#9790;</span>
+        <strong>Afternoon Drop-off</strong>
+        <span>From school &middot; students leave at stops</span>
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="modal" id="end-dialog">
+  <div class="modal-head">
+    <div>
+      <h2>End this trip?</h2>
+      <p class="muted">The bus will stop accepting GPS updates for this trip.</p>
+    </div>
+    <button class="icon-btn" type="button" data-close-dialog aria-label="Close">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div class="form-actions">
+      <button class="btn btn-danger" type="button" id="confirm-end-trip">Yes, end trip</button>
+      <button class="btn btn-ghost" type="button" data-close-dialog>Cancel</button>
+    </div>
+  </div>
+</dialog>
+
+{% if bus %}
+<script type="application/json" id="driver-data">{{ {
+  "routeGeometry": route_geometry or [],
+  "school": school,
+  "hasRoute": bus.route_id is not none,
+  "bus": {"id": bus.id, "name": bus.name, "registration_number": bus.registration_number}
+}|tojson }}</script>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
+<script src="{{ url_for('static', filename='js/driver.js') }}"></script>
+{% endblock %}

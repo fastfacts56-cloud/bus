@@ -1,0 +1,168 @@
+{% extends "admin/layout.html" %}
+{% set page_title = "Buses" %}
+{% set page_subtitle = "Manage buses, assign drivers and routes, and pair ESP32 GPS devices." %}
+{% block title %}Buses &middot; School Bus Tracker{% endblock %}
+
+{% block content %}
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>Add a bus</h2>
+      <p>Registration numbers are unique. Pair the ESP32 after saving the bus.</p>
+    </div>
+  </div>
+  <form method="post" action="{{ url_for('admin.add_bus') }}" class="form-grid form-grid-4">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="registration_number">Registration number</label>
+      <input id="registration_number" name="registration_number" type="text" maxlength="30" required placeholder="e.g. KA-01-AB-1234">
+    </div>
+    <div class="field">
+      <label for="name">Bus name / number</label>
+      <input id="name" name="name" type="text" maxlength="80" required placeholder="e.g. Bus 3">
+    </div>
+    <div class="field">
+      <label for="driver_id">Assigned driver</label>
+      <select id="driver_id" name="driver_id">
+        <option value="">— Unassigned —</option>
+        {% for driver in drivers %}
+          <option value="{{ driver.id }}">{{ driver.name }} ({{ driver.username }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="route_id">Assigned route</label>
+      <select id="route_id" name="route_id">
+        <option value="">— No route —</option>
+        {% for route in routes %}
+          <option value="{{ route.id }}">{{ route.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-actions field-wide">
+      <button class="btn btn-primary" type="submit">Add bus</button>
+      {% if not drivers %}<span class="field-hint">Tip: add a driver first on the Drivers page.</span>{% endif %}
+      {% if not routes %}<span class="field-hint">Tip: create a route first on the Routes page.</span>{% endif %}
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>All buses <span class="count-pill">{{ buses|length }}</span></h2>
+      <p>Device status is based on the last authenticated ESP32 contact.</p>
+    </div>
+  </div>
+
+  {% if buses %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Bus</th><th>Driver</th><th>Route</th><th>ESP32 / GPS</th><th>Trip</th><th class="actions-col">Actions</th></tr></thead>
+      <tbody>
+      {% for bus in buses %}
+        <tr>
+          <td>
+            <strong>{{ bus.name }}</strong>
+            <span class="subtext"><span class="mono">{{ bus.registration_number }}</span></span>
+          </td>
+          <td>{{ bus.driver_name or "Unassigned" }}</td>
+          <td>{{ bus.route_name or "No route" }}</td>
+          <td>
+            {% if not bus.device_id %}
+              <span class="badge badge-muted">Not paired</span>
+              <span class="subtext">Generate a pairing code</span>
+            {% else %}
+              <div class="status-line">
+                {% if bus.device_online %}<span class="badge badge-success">Device online</span>
+                {% else %}<span class="badge badge-danger">Device offline</span>{% endif %}
+                {% if bus.gps_stale %}
+                  <span class="badge badge-warning">GPS lost</span>
+                {% elif bus.weak_gps %}
+                  <span class="badge badge-warning">Weak GPS</span>
+                {% else %}
+                  <span class="badge badge-success">Good GPS</span>
+                {% endif %}
+              </div>
+              <span class="subtext">Last position: {{ bus.last_update_at|pretty_time if bus.last_update_at else "Never" }}</span>
+              {% if bus.accuracy_m %}<span class="subtext">Accuracy {{ bus.accuracy_m|round|int }} m{% if bus.satellites is not none %} &middot; {{ bus.satellites }} satellites{% endif %}</span>{% endif %}
+            {% endif %}
+          </td>
+          <td>
+            {% if bus.active_trip_type %}
+              <span class="badge badge-info">{{ "Morning pickup" if bus.active_trip_type == "morning" else "Afternoon drop-off" }}</span>
+            {% else %}
+              <span class="muted">Idle</span>
+            {% endif %}
+          </td>
+          <td class="row-actions">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.edit_bus', bus_id=bus.id) }}">Edit</a>
+            {% if not bus.device_id %}
+              <button class="btn btn-primary btn-sm" type="button"
+                      data-pair-bus="{{ bus.id }}" data-pair-name="{{ bus.name }} ({{ bus.registration_number }})">
+                Pair ESP32
+              </button>
+            {% else %}
+              <form method="post" action="{{ url_for('admin.unpair_device', bus_id=bus.id) }}"
+                    data-confirm="Unpair the GPS device from {{ bus.name }}? Its old credential will be revoked and any active trip will end.">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-ghost btn-sm" type="submit">Unpair</button>
+              </form>
+            {% endif %}
+            {% if bus.active_trip_id %}
+              <form method="post" action="{{ url_for('admin.force_end_trip', bus_id=bus.id) }}"
+                    data-confirm="Force-end the active trip on {{ bus.name }}? Only use this if the driver cannot end it.">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-ghost btn-sm" type="submit">End trip</button>
+              </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('admin.delete_bus', bus_id=bus.id) }}"
+                  data-confirm="Permanently delete {{ bus.name }}? Its device, live position and trip records will be deleted, and students will be unassigned.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state">
+      <strong>No buses yet</strong>
+      <p>Add a bus above. Then pair the ESP32 using a one-time code.</p>
+    </div>
+  {% endif %}
+</section>
+
+<dialog class="modal" id="pair-dialog">
+  <div class="modal-head">
+    <div>
+      <h2>Pair ESP32 device</h2>
+      <p id="pair-bus-name" class="muted"></p>
+    </div>
+    <button class="icon-btn" type="button" data-close-dialog aria-label="Close">&times;</button>
+  </div>
+  <div class="modal-body">
+    <div id="pair-error" class="alert alert-error hidden"></div>
+    <div id="pair-content">
+      <p class="muted">This code expires in <strong>5 minutes</strong> and can be used only once.</p>
+      <ol class="steps compact">
+        <li><strong>Open Arduino Serial Monitor</strong><span>Set the baud rate to 115200.</span></li>
+        <li><strong>Type the command below</strong><span>Send it while the ESP32 is connected to Wi-Fi.</span></li>
+      </ol>
+      <div class="pair-code-box">
+        <code id="pair-code">— — —</code>
+        <button type="button" class="btn btn-secondary btn-sm" data-copy-target="pair-code">Copy</button>
+      </div>
+      <div class="pair-command">PAIR <span id="pair-command-code"></span></div>
+      <p class="pair-countdown">Expires in <strong id="pair-countdown">5:00</strong></p>
+      <p class="muted small">The server stores only a hash of this code. The ESP32 receives a separate device credential and saves it in its own flash memory.</p>
+    </div>
+  </div>
+</dialog>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='js/admin-buses.js') }}"></script>
+{% endblock %}

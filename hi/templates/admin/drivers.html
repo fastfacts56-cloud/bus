@@ -1,0 +1,99 @@
+{% extends "admin/layout.html" %}
+{% set page_title = "Drivers" %}
+{% set page_subtitle = "Create driver logins and manage their details." %}
+{% block title %}Drivers &middot; School Bus Tracker{% endblock %}
+
+{% block content %}
+<div class="page-grid">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>Add a driver</h2>
+        <p>A strong password is generated automatically.</p>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('admin.add_driver') }}" class="form-grid">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <div class="field field-wide">
+        <label for="name">Driver name</label>
+        <input id="name" name="name" type="text" maxlength="120" required placeholder="Full name">
+      </div>
+      <div class="field">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" maxlength="50" required placeholder="e.g. driver.ravi">
+        <small class="field-hint">3-50 letters, numbers, dots, dashes or underscores.</small>
+      </div>
+      <div class="field">
+        <label for="phone">Phone number</label>
+        <input id="phone" name="phone" type="tel" maxlength="30" required placeholder="+91 98765 43210">
+      </div>
+      <div class="form-actions field-wide">
+        <button class="btn btn-primary" type="submit">Add driver &amp; generate password</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card info-card">
+    <h2>Driver access</h2>
+    <ul class="check-list">
+      <li>Drivers can only see the bus assigned to them.</li>
+      <li>Only the admin assigns drivers to buses.</li>
+      <li>Starting or ending a trip is checked on the backend.</li>
+      <li>Driver accounts cannot be created publicly.</li>
+    </ul>
+    <p class="muted small">Assign a driver to a bus on the Buses page. One driver can have one bus.</p>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>All drivers <span class="count-pill">{{ drivers|length }}</span></h2>
+      <p>Permanent deletion keeps old trip records but removes the driver's login.</p>
+    </div>
+    <div class="search-wrap">
+      <input type="search" placeholder="Search driver or bus..." data-table-filter="drivers-table" aria-label="Search drivers">
+    </div>
+  </div>
+
+  {% if drivers %}
+  <div class="table-wrap">
+    <table class="data-table" id="drivers-table">
+      <thead><tr><th>Name</th><th>Username</th><th>Phone</th><th>Assigned bus</th><th>Trips</th><th class="actions-col">Actions</th></tr></thead>
+      <tbody>
+      {% for driver in drivers %}
+        <tr>
+          <td><strong>{{ driver.name }}</strong></td>
+          <td><span class="mono">{{ driver.username }}</span></td>
+          <td class="muted">{{ driver.phone }}</td>
+          <td>
+            {% if driver.bus_name %}
+              {{ driver.bus_name }}<span class="subtext">{{ driver.registration_number }}</span>
+            {% else %}
+              <span class="badge badge-muted">No bus</span>
+            {% endif %}
+          </td>
+          <td>{{ driver.trip_count }}</td>
+          <td class="row-actions">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.edit_driver', driver_id=driver.id) }}">Edit</a>
+            <form method="post" action="{{ url_for('admin.reset_driver_password', driver_id=driver.id) }}"
+                  data-confirm="Reset the password for {{ driver.name }}?">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-ghost btn-sm" type="submit">Reset password</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.delete_driver', driver_id=driver.id) }}"
+                  data-confirm="Permanently delete driver {{ driver.name }}? Their bus will become unassigned. This cannot be undone.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state"><strong>No drivers yet</strong><p>Create a driver login above, then assign them to a bus.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

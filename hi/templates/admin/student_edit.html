@@ -1,0 +1,84 @@
+{% extends "admin/layout.html" %}
+{% set page_title = "Edit student" %}
+{% set page_subtitle = "Update details, assign a bus, or change the pickup stop." %}
+{% block title %}Edit {{ student.name }} &middot; School Bus Tracker{% endblock %}
+
+{% block content %}
+<section class="card narrow-card">
+  <div class="card-head">
+    <div>
+      <h2>{{ student.name }} <span class="mono muted">{{ student.usn }}</span></h2>
+      <p>Changes are saved to the database immediately.</p>
+    </div>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.students') }}">&larr; Back to students</a>
+  </div>
+
+  <form method="post" action="{{ url_for('admin.update_student', student_id=student.id) }}" class="form-grid">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="usn">USN</label>
+      <input id="usn" name="usn" type="text" maxlength="30" value="{{ student.usn }}" required>
+    </div>
+    <div class="field">
+      <label for="name">Full name</label>
+      <input id="name" name="name" type="text" maxlength="120" value="{{ student.name }}" required>
+    </div>
+    <div class="field field-wide">
+      <label for="gmail">Gmail address</label>
+      <input id="gmail" name="gmail" type="email" maxlength="120" value="{{ student.gmail }}" required>
+    </div>
+
+    <div class="field">
+      <label for="bus_id">Assigned bus</label>
+      <select id="bus_id" name="bus_id" data-student-bus>
+        <option value="">— No bus —</option>
+        {% for bus in buses %}
+          <option value="{{ bus.id }}" data-route-id="{{ bus.route_id or '' }}"
+                  {{ "selected" if student.bus_id == bus.id }}>
+            {{ bus.name }} ({{ bus.registration_number }})
+          </option>
+        {% endfor %}
+      </select>
+      {% if not buses %}<small class="field-hint">Create a bus first, then come back.</small>{% endif %}
+    </div>
+    <div class="field">
+      <label for="stop_id">Pickup stop</label>
+      <select id="stop_id" name="stop_id" data-student-stop>
+        <option value="">— No stop —</option>
+        {% for route in routes_with_stops %}
+          {% for stop in route.stops %}
+            <option value="{{ stop.id }}" data-route-id="{{ route.id }}"
+                    {{ "selected" if student.stop_id == stop.id }}>
+              {{ stop.name }} ({{ route.name }})
+            </option>
+          {% endfor %}
+        {% endfor %}
+      </select>
+      <small class="field-hint">Only stops belonging to the selected bus's route are shown.</small>
+    </div>
+
+    <div class="form-actions field-wide">
+      <button class="btn btn-primary" type="submit">Save changes</button>
+      <a class="btn btn-ghost" href="{{ url_for('admin.students') }}">Cancel</a>
+    </div>
+  </form>
+
+  <div class="divider"></div>
+
+  <div class="danger-zone">
+    <div>
+      <h3>Reset password</h3>
+      <p class="muted">Generate a new random password. The student's old password stops working.</p>
+    </div>
+    <form method="post" action="{{ url_for('admin.reset_student_password', student_id=student.id) }}"
+          data-confirm="Reset the password for {{ student.name }}?">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-secondary" type="submit">Reset password</button>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='js/admin-student-edit.js') }}"></script>
+{% endblock %}

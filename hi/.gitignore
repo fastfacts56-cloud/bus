@@ -1,0 +1,39 @@
+# ---------------------------------------------------------------------------
+# Never commit secrets or runtime data.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Runtime data
+instance/
+logs/*
+!logs/.gitkeep
+backups/*
+!backups/.gitkeep
+
+# Cloudflare Tunnel (contains your tunnel ID / credentials)
+cloudflared/config.yml
+cloudflared/*.json
+cloudflared/cloudflared.exe
+cloudflared/cloudflared-*.exe
+
+# Arduino build artefacts
+esp32/**/build/
+esp32/**/*.bin
+esp32/**/*.elf
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store

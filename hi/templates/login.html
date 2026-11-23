@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Sign in &middot; School Bus Tracker{% endblock %}
+{% block body_class %}login-body{% endblock %}
+
+{% block body %}
+<div class="login-shell">
+  <section class="login-hero">
+    <div class="hero-top">
+      <div class="brand brand-large">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M4 16V7a2 2 0 0 1 2-2h9l5 5v6"/><path d="M4 16h16M7 16v2m10-2v2"/>
+            <path d="M6 9h7M15 9h2v3h-5"/><circle cx="7.5" cy="16" r="1"/><circle cx="16.5" cy="16" r="1"/>
+          </svg>
+        </div>
+        <div><strong>School Bus</strong><span>Tracking System</span></div>
+      </div>
+    </div>
+    <div class="hero-copy">
+      <span class="eyebrow">Live campus transport</span>
+      <h1>Know exactly where the bus is.</h1>
+      <p>Real-time GPS, road-based arrival estimates, and a notification when your bus is getting close.</p>
+      <ul class="hero-points">
+        <li><span class="tick">&#10003;</span> Follow your assigned bus on the map</li>
+        <li><span class="tick">&#10003;</span> Road-based ETA to your pickup stop</li>
+        <li><span class="tick">&#10003;</span> Browser notification before arrival</li>
+      </ul>
+    </div>
+    <div class="hero-route" aria-hidden="true">
+      <svg viewBox="0 0 500 180" preserveAspectRatio="none">
+        <path d="M10 150 C 90 150, 100 40, 180 40 S 280 140, 350 110 S 450 30, 490 30"
+              fill="none" stroke="rgba(245,179,1,.25)" stroke-width="2" stroke-dasharray="8 10"/>
+        <circle cx="10" cy="150" r="5" fill="#f5b301"/>
+        <circle cx="490" cy="30" r="5" fill="#5b9dff"/>
+      </svg>
+    </div>
+  </section>
+
+  <section class="login-panel">
+    <div class="login-card">
+      <h2>Welcome back</h2>
+      <p class="muted">Choose how you sign in. There is no public registration.</p>
+
+      <div class="role-tabs" role="tablist" aria-label="Account type">
+        <button type="button" class="role-tab {{ 'active' if (active_role or 'student') == 'student' }}" data-role="student">Student</button>
+        <button type="button" class="role-tab {{ 'active' if active_role == 'driver' }}" data-role="driver">Driver</button>
+        <button type="button" class="role-tab {{ 'active' if active_role == 'admin' }}" data-role="admin">Admin</button>
+      </div>
+
+      {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('auth.login_as', role=(active_role or 'student')) }}" id="login-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label for="username" id="login-username-label">USN</label>
+          <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="password-wrap">
+            <input id="password" name="password" type="password" autocomplete="current-password" required>
+            <button class="password-toggle" type="button" data-toggle-password aria-label="Show password">Show</button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-lg btn-block" type="submit">Sign in</button>
+      </form>
+
+      <p class="login-help">Forgot your password? Contact the school admin to reset it.</p>
+    </div>
+    <p class="login-footer">School Bus Tracker &middot; One school, one system</p>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+{% endblock %}

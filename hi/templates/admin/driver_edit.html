@@ -1,0 +1,49 @@
+{% extends "admin/layout.html" %}
+{% set page_title = "Edit driver" %}
+{% set page_subtitle = "Update driver details or reset the login password." %}
+{% block title %}Edit {{ driver.name }} &middot; School Bus Tracker{% endblock %}
+
+{% block content %}
+<section class="card narrow-card">
+  <div class="card-head">
+    <div>
+      <h2>{{ driver.name }}</h2>
+      <p>Driver username: <span class="mono">{{ driver.username }}</span></p>
+    </div>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.drivers') }}">&larr; Back to drivers</a>
+  </div>
+
+  <form method="post" action="{{ url_for('admin.update_driver', driver_id=driver.id) }}" class="form-grid">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <div class="field field-wide">
+      <label for="name">Full name</label>
+      <input id="name" name="name" type="text" maxlength="120" value="{{ driver.name }}" required>
+    </div>
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" maxlength="50" value="{{ driver.username }}" required>
+    </div>
+    <div class="field">
+      <label for="phone">Phone number</label>
+      <input id="phone" name="phone" type="tel" maxlength="30" value="{{ driver.phone }}" required>
+    </div>
+    <div class="form-actions field-wide">
+      <button class="btn btn-primary" type="submit">Save changes</button>
+      <a class="btn btn-ghost" href="{{ url_for('admin.drivers') }}">Cancel</a>
+    </div>
+  </form>
+
+  <div class="divider"></div>
+  <div class="danger-zone">
+    <div>
+      <h3>Reset password</h3>
+      <p class="muted">Generate a new random password. The old password stops working immediately.</p>
+    </div>
+    <form method="post" action="{{ url_for('admin.reset_driver_password', driver_id=driver.id) }}"
+          data-confirm="Reset the password for {{ driver.name }}?">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-secondary" type="submit">Reset password</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

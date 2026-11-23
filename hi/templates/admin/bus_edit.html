@@ -1,0 +1,87 @@
+{% extends "admin/layout.html" %}
+{% set page_title = "Edit bus" %}
+{% set page_subtitle = "Change the driver, route, device pairing or bus details." %}
+{% block title %}Edit {{ bus.name }} &middot; School Bus Tracker{% endblock %}
+
+{% block content %}
+<section class="card narrow-card">
+  <div class="card-head">
+    <div>
+      <h2>{{ bus.name }}</h2>
+      <p class="mono">{{ bus.registration_number }}</p>
+    </div>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.buses') }}">&larr; Back to buses</a>
+  </div>
+
+  <form method="post" action="{{ url_for('admin.update_bus', bus_id=bus.id) }}" class="form-grid">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="registration_number">Registration number</label>
+      <input id="registration_number" name="registration_number" type="text" maxlength="30" value="{{ bus.registration_number }}" required>
+    </div>
+    <div class="field">
+      <label for="name">Bus name / number</label>
+      <input id="name" name="name" type="text" maxlength="80" value="{{ bus.name }}" required>
+    </div>
+    <div class="field">
+      <label for="driver_id">Assigned driver</label>
+      <select id="driver_id" name="driver_id">
+        <option value="">— Unassigned —</option>
+        {% for driver in drivers %}
+          <option value="{{ driver.id }}" {{ "selected" if bus.driver_id == driver.id }}>{{ driver.name }} ({{ driver.username }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="route_id">Assigned route</label>
+      <select id="route_id" name="route_id">
+        <option value="">— No route —</option>
+        {% for route in routes %}
+          <option value="{{ route.id }}" {{ "selected" if bus.route_id == route.id }}>{{ route.name }}</option>
+        {% endfor %}
+      </select>
+      <small class="field-hint">Changing the route clears stops that do not belong to the new route.</small>
+    </div>
+    <div class="form-actions field-wide">
+      <button class="btn btn-primary" type="submit">Save changes</button>
+      <a class="btn btn-ghost" href="{{ url_for('admin.buses') }}">Cancel</a>
+    </div>
+  </form>
+
+  <div class="divider"></div>
+
+  <div class="device-panel">
+    <div>
+      <h3>ESP32 device</h3>
+      {% if device %}
+        <p class="muted">Paired {{ device.paired_at|pretty_time }}. Last contact: {{ device.last_seen_at|pretty_time if device.last_seen_at else "Never" }}.</p>
+        <p class="muted small">The device credential is stored only as a hash and is never shown here.</p>
+      {% else %}
+        <p class="muted">No device is paired. Go to the Buses page and click <strong>Pair ESP32</strong> to generate a one-time code.</p>
+      {% endif %}
+    </div>
+    {% if device %}
+      <form method="post" action="{{ url_for('admin.unpair_device', bus_id=bus.id) }}"
+            data-confirm="Unpair the device from {{ bus.name }}? Its credential will stop working.">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-secondary" type="submit">Unpair device</button>
+      </form>
+    {% else %}
+      <a class="btn btn-primary" href="{{ url_for('admin.buses') }}">Pair a device</a>
+    {% endif %}
+  </div>
+
+  <div class="divider"></div>
+  <div class="danger-zone">
+    <div>
+      <h3>Delete this bus</h3>
+      <p class="muted">Deletes the device, live position and trip history for this bus. Assigned students become unassigned.</p>
+    </div>
+    <form method="post" action="{{ url_for('admin.delete_bus', bus_id=bus.id) }}"
+          data-confirm="Permanently delete {{ bus.name }}? This cannot be undone.">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-danger" type="submit">Delete bus</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

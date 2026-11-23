@@ -1,0 +1,111 @@
+{% extends "admin/layout.html" %}
+{% set page_title = "Students" %}
+{% set page_subtitle = "Create student accounts and assign each student to a bus and stop." %}
+{% block title %}Students &middot; School Bus Tracker{% endblock %}
+
+{% block content %}
+<div class="page-grid">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>Add a student</h2>
+        <p>Only three details are needed. A strong password is generated automatically.</p>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('admin.add_student') }}" class="form-grid">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label for="usn">USN</label>
+        <input id="usn" name="usn" type="text" maxlength="30" required placeholder="e.g. 1RV21CS045">
+      </div>
+      <div class="field">
+        <label for="name">Student name</label>
+        <input id="name" name="name" type="text" maxlength="120" required placeholder="Full name">
+      </div>
+      <div class="field field-wide">
+        <label for="gmail">Gmail address</label>
+        <input id="gmail" name="gmail" type="email" maxlength="120" required placeholder="student@gmail.com">
+        <small class="field-hint">Used as a contact record only. The app never sends email.</small>
+      </div>
+      <div class="form-actions field-wide">
+        <button class="btn btn-primary" type="submit">Add student &amp; generate password</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card info-card">
+    <h2>How assignment works</h2>
+    <ol class="steps">
+      <li><strong>Create the student</strong><span>Copy the generated password and share it privately.</span></li>
+      <li><strong>Assign a bus</strong><span>Click Edit and choose the bus.</span></li>
+      <li><strong>Choose a stop</strong><span>Only stops on the bus's route are offered.</span></li>
+    </ol>
+    <p class="muted small">Students sign in with their USN and password. There is no self-registration.</p>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>All students <span class="count-pill">{{ students|length }}</span></h2>
+      <p>Deleting a student also deletes their login, notification settings and push subscriptions.</p>
+    </div>
+    <div class="search-wrap">
+      <input type="search" placeholder="Search USN, name or bus..." data-table-filter="students-table" aria-label="Search students">
+    </div>
+  </div>
+
+  {% if students %}
+  <div class="table-wrap">
+    <table class="data-table" id="students-table">
+      <thead>
+        <tr><th>USN</th><th>Name</th><th>Gmail</th><th>Bus</th><th>Pickup stop</th><th class="actions-col">Actions</th></tr>
+      </thead>
+      <tbody>
+      {% for student in students %}
+        <tr>
+          <td><span class="mono">{{ student.usn }}</span></td>
+          <td><strong>{{ student.name }}</strong></td>
+          <td class="muted">{{ student.gmail }}</td>
+          <td>
+            {% if student.bus_name %}
+              <strong>{{ student.bus_name }}</strong><span class="subtext">{{ student.registration_number }}</span>
+            {% else %}
+              <span class="badge badge-warning">No bus</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if student.stop_name %}
+              {{ student.stop_name }}
+            {% elif student.bus_id %}
+              <span class="badge badge-warning">No stop</span>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td class="row-actions">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.edit_student', student_id=student.id) }}">Edit</a>
+            <form method="post" action="{{ url_for('admin.reset_student_password', student_id=student.id) }}"
+                  data-confirm="Reset the password for {{ student.name }}? The old password will stop working.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-ghost btn-sm" type="submit">Reset password</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.delete_student', student_id=student.id) }}"
+                  data-confirm="Permanently delete {{ student.name }} ({{ student.usn }})? This cannot be undone.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state">
+      <strong>No students yet</strong>
+      <p>Add your first student above. Account creation takes seconds.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

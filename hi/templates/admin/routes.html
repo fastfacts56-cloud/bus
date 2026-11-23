@@ -1,0 +1,93 @@
+{% extends "admin/layout.html" %}
+{% set page_title = "Routes & school location" %}
+{% set page_subtitle = "Draw road-following routes, add stops, and set the school destination once for all buses." %}
+{% block title %}Routes &middot; School Bus Tracker{% endblock %}
+
+{% block content %}
+<div class="page-grid">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>School / college location</h2>
+        <p>Used as the destination for morning pickup and the start for afternoon drop-off.</p>
+      </div>
+      <button class="btn btn-secondary btn-sm" type="button" id="set-school-btn">
+        {{ "Change location" if school else "Set location" }}
+      </button>
+    </div>
+    <div class="school-map" id="school-map"></div>
+    <div class="school-map-footer">
+      <span id="school-coordinates" class="muted">
+        {% if school %}Current: {{ "%.5f"|format(school.lat) }}, {{ "%.5f"|format(school.lon) }}{% else %}No school location has been set yet.{% endif %}
+      </span>
+      <div class="school-save-actions hidden" id="school-save-actions">
+        <button class="btn btn-ghost btn-sm" type="button" id="school-cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" type="button" id="school-save">Save school location</button>
+      </div>
+    </div>
+    <p class="field-hint">Click the map only when changing the location. This single point is shared by every route.</p>
+  </section>
+
+  <section class="card info-card">
+    <h2>Route conventions</h2>
+    <ul class="check-list">
+      <li>Draw points along the roads, from the first pickup area towards school.</li>
+      <li>The server asks OSRM for a real road route &mdash; no straight lines.</li>
+      <li>Routes are stored so they end near the school. If drawn backwards, saving automatically reverses them.</li>
+      <li>Stops snap to the route and are ordered by road distance.</li>
+      <li>Morning trips run towards the school; afternoon trips run in the opposite direction.</li>
+    </ul>
+    <p class="muted small">Public OSRM is a free service. You are only making a request when you preview or save a route.</p>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>Routes <span class="count-pill">{{ routes|length }}</span></h2>
+      <p>Each bus has one route. Every route can have many named stops.</p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('admin.new_route') }}">+ Create route</a>
+  </div>
+
+  {% if routes %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Route</th><th>Stops</th><th>Buses</th><th>Road distance</th><th>Updated</th><th class="actions-col">Actions</th></tr></thead>
+      <tbody>
+      {% for route in routes %}
+        <tr>
+          <td><strong>{{ route.name }}</strong></td>
+          <td>{{ route.stop_count }}</td>
+          <td>{{ route.bus_count }}</td>
+          <td>{{ (route.total_distance_m / 1000)|round(2) }} km</td>
+          <td class="muted">{{ route.updated_at|pretty_time }}</td>
+          <td class="row-actions">
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.edit_route', route_id=route.id) }}">Open editor</a>
+            <form method="post" action="{{ url_for('admin.delete_route', route_id=route.id) }}"
+                  data-confirm="Delete route {{ route.name }}? Assigned buses will be unassigned and students will lose their stops. This cannot be undone.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state">
+      <strong>No routes yet</strong>
+      <p>Create a route, click points along the roads on the map, then add stops.</p>
+      <a class="btn btn-primary" href="{{ url_for('admin.new_route') }}">Create your first route</a>
+    </div>
+  {% endif %}
+</section>
+
+<script type="application/json" id="school-map-data">{{ {"school": school}|tojson }}</script>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin-routes.js') }}"></script>
+{% endblock %}

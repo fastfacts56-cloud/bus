@@ -1,0 +1,181 @@
+{% extends "admin/layout.html" %}
+{% set page_title = "Dashboard" %}
+{% set page_subtitle = "A quick view of buses, GPS and today's trips." %}
+{% block title %}Dashboard &middot; School Bus Tracker{% endblock %}
+
+{% block content %}
+<section class="stat-grid">
+  <article class="stat-card">
+    <span class="stat-label">Total buses</span>
+    <strong class="stat-value">{{ stats.buses }}</strong>
+    <span class="stat-note">{{ stats.online_buses }} online &middot; {{ stats.offline_buses }} offline</span>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Active trips</span>
+    <strong class="stat-value">{{ stats.active_trips }}</strong>
+    <span class="stat-note">{{ "Morning / afternoon runs in progress" if stats.active_trips else "No trip is running" }}</span>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Students</span>
+    <strong class="stat-value">{{ stats.students }}</strong>
+    <span class="stat-note">Assigned accounts</span>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Drivers &amp; routes</span>
+    <strong class="stat-value">{{ stats.drivers }} <span class="stat-divider">/</span> {{ stats.routes }}</strong>
+    <span class="stat-note">Drivers registered &middot; routes saved</span>
+  </article>
+</section>
+
+<div class="dashboard-grid">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>GPS health</h2>
+        <p>Simple signal state for paired devices.</p>
+      </div>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.buses') }}">Manage buses</a>
+    </div>
+    <div class="gps-grid">
+      <div class="gps-stat gps-ok"><strong>{{ stats.gps_ok }}</strong><span>Good GPS</span></div>
+      <div class="gps-stat gps-weak"><strong>{{ stats.gps_weak }}</strong><span>Weak signal</span></div>
+      <div class="gps-stat gps-lost"><strong>{{ stats.gps_lost }}</strong><span>No recent fix</span></div>
+      <div class="gps-stat gps-none"><strong>{{ stats.unpaired }}</strong><span>Not paired</span></div>
+    </div>
+    <div class="divider"></div>
+    <div class="school-status">
+      <div>
+        <h3>School location</h3>
+        {% if school %}
+          <p class="muted">Set to {{ "%.5f"|format(school.lat) }}, {{ "%.5f"|format(school.lon) }}. Used by every route.</p>
+        {% else %}
+          <p class="muted">Not set yet. Morning trips need a school destination.</p>
+        {% endif %}
+      </div>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.routes') }}">{{ "Change" if school else "Set location" }}</a>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>Quick actions</h2>
+        <p>Common admin tasks.</p>
+      </div>
+    </div>
+    <div class="quick-actions">
+      <a class="quick-action" href="{{ url_for('admin.students') }}">
+        <span class="quick-icon">&#43;</span>
+        <div><strong>Add students</strong><span>USN, name and email</span></div>
+      </a>
+      <a class="quick-action" href="{{ url_for('admin.buses') }}">
+        <span class="quick-icon">&#128666;</span>
+        <div><strong>Pair a bus device</strong><span>Generate a 5-minute code</span></div>
+      </a>
+      <a class="quick-action" href="{{ url_for('admin.new_route') }}">
+        <span class="quick-icon">&#128506;</span>
+        <div><strong>Create a route</strong><span>Draw points on the map</span></div>
+      </a>
+      <a class="quick-action" href="{{ url_for('admin.drivers') }}">
+        <span class="quick-icon">&#128100;</span>
+        <div><strong>Add a driver</strong><span>Create a driver login</span></div>
+      </a>
+    </div>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>Buses right now</h2>
+      <p>Device connection and last GPS position.</p>
+    </div>
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('admin.buses') }}">View all buses</a>
+  </div>
+  {% if buses %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Bus</th><th>Driver</th><th>Route</th><th>Device</th><th>GPS</th><th>Trip</th></tr>
+      </thead>
+      <tbody>
+      {% for bus in buses %}
+        <tr>
+          <td>
+            <strong>{{ bus.name }}</strong>
+            <span class="subtext">{{ bus.registration_number }}</span>
+          </td>
+          <td>{{ bus.driver_name or "Unassigned" }}</td>
+          <td>{{ bus.route_name or "No route" }}</td>
+          <td>
+            {% if not bus.device_id %}
+              <span class="badge badge-muted">Not paired</span>
+            {% elif bus.device_online %}
+              <span class="badge badge-success">Online</span>
+            {% else %}
+              <span class="badge badge-danger">Offline</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not bus.device_id %}
+              <span class="muted">—</span>
+            {% elif bus.gps_stale %}
+              <span class="badge badge-warning">No recent fix</span>
+              <span class="subtext">{{ bus.last_update_at|pretty_time if bus.last_update_at else "Never" }}</span>
+            {% elif bus.weak_gps %}
+              <span class="badge badge-warning">Weak signal</span>
+            {% else %}
+              <span class="badge badge-success">Live</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if bus.active_trip_type %}
+              <span class="badge badge-info">{{ "Morning pickup" if bus.active_trip_type == "morning" else "Afternoon drop-off" }}</span>
+            {% else %}
+              <span class="muted">Idle</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state">
+      <strong>No buses yet</strong>
+      <p>Add a bus, assign a driver and route, then pair an ESP32 device.</p>
+      <a class="btn btn-primary" href="{{ url_for('admin.buses') }}">Add your first bus</a>
+    </div>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>Recent trips</h2>
+      <p>The latest 10 trips. GPS history is kept for 7 days.</p>
+    </div>
+  </div>
+  {% if recent_trips %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Bus</th><th>Driver</th><th>Trip</th><th>Route</th><th>Started</th><th>Ended</th></tr></thead>
+      <tbody>
+      {% for trip in recent_trips %}
+        <tr>
+          <td><strong>{{ trip.bus_name or "Deleted bus" }}</strong><span class="subtext">{{ trip.registration_number or "" }}</span></td>
+          <td>{{ trip.driver_name or "Deleted driver" }}</td>
+          <td>{{ "Morning pickup" if trip.trip_type == "morning" else "Afternoon drop-off" }}</td>
+          <td>{{ trip.route_name or "Deleted route" }}</td>
+          <td>{{ trip.started_at|pretty_time }}</td>
+          <td>{% if trip.ended_at %}{{ trip.ended_at|pretty_time }}{% else %}<span class="badge badge-info">Active</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state"><strong>No trips recorded</strong><p>Trips appear here after a driver starts one.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

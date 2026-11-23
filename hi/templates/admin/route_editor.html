@@ -1,0 +1,117 @@
+{% extends "admin/layout.html" %}
+{% set page_title = "Route editor" %}
+{% set page_subtitle = "Click along the roads, preview the road route, then add bus stops." %}
+{% block title %}Route editor &middot; School Bus Tracker{% endblock %}
+
+{% block content %}
+<div class="editor-shell">
+  <div class="editor-map-wrap">
+    <div class="editor-map" id="route-map"></div>
+    <div class="map-hint" id="map-hint">Default: drag route point markers to adjust them.</div>
+  </div>
+
+  <aside class="editor-panel">
+    <div class="editor-panel-head">
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.routes') }}">&larr; Routes</a>
+      <span class="badge {{ 'badge-info' if mode == 'edit' else 'badge-muted' }}">{{ "Editing saved route" if mode == "edit" else "New route" }}</span>
+    </div>
+
+    <div class="field">
+      <label for="route-name">Route name</label>
+      <input id="route-name" type="text" maxlength="100" value="{{ route.name if route else '' }}" placeholder="e.g. North City Route">
+    </div>
+
+    <div class="tool-grid">
+      <button class="tool-btn active" type="button" data-tool="move">
+        <span class="tool-icon">&#10021;</span><span>Move points</span>
+      </button>
+      <button class="tool-btn" type="button" data-tool="add-point">
+        <span class="tool-icon">&#43;</span><span>Add points</span>
+      </button>
+      <button class="tool-btn" type="button" data-tool="add-stop" {{ "disabled" if not route }}>
+        <span class="tool-icon">&#128205;</span><span>Add stop</span>
+      </button>
+      <button class="tool-btn" type="button" data-tool="undo">
+        <span class="tool-icon">&#8630;</span><span>Undo point</span>
+      </button>
+    </div>
+
+    <div class="editor-actions">
+      <button class="btn btn-secondary btn-block" type="button" id="preview-route">Preview road route</button>
+      <button class="btn btn-primary btn-block" type="button" id="save-route">{{ "Save route changes" if mode == "edit" else "Save route" }}</button>
+    </div>
+    <p class="editor-status" id="editor-status" aria-live="polite">Click "Add points" then click the map along the road.</p>
+    <div class="route-meta">
+      <span><strong id="waypoint-count">{{ waypoints|length }}</strong> route points</span>
+      <span><strong id="route-distance">—</strong></span>
+    </div>
+
+    <div class="editor-section">
+      <div class="editor-section-head">
+        <h3>Bus stops</h3>
+        <span class="count-pill" id="stop-count">{{ stops|length }}</span>
+      </div>
+      {% if not route %}
+        <p class="muted small">Save the route first. You can then add stops and drag them onto the road.</p>
+      {% endif %}
+      <div id="stop-list" class="stop-list">
+        {% for stop in stops %}
+          <div class="stop-item" data-stop-id="{{ stop.id }}">
+            <div class="stop-item-head">
+              <span class="stop-dot"></span>
+              <strong>#{{ stop.stop_order + 1 }}</strong>
+              <span class="muted small">{{ (stop.distance_along_m / 1000)|round(2) }} km along</span>
+            </div>
+            <div class="stop-item-row">
+              <input type="text" value="{{ stop.name }}" maxlength="80" data-stop-name aria-label="Stop name">
+              <button class="btn btn-ghost btn-sm" type="button" data-save-stop>Rename</button>
+              <button class="btn btn-danger btn-sm" type="button" data-delete-stop>Delete</button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="empty-state small" id="stop-empty" {{ "hidden" if stops }}>
+        <p>No stops yet. Use "Add stop", then click next to the route.</p>
+      </div>
+    </div>
+
+    <p class="muted small">Stops snap to the nearest point on the route. They are ordered by road distance, not straight-line distance.</p>
+  </aside>
+</div>
+
+<dialog class="modal" id="stop-dialog">
+  <div class="modal-head">
+    <div>
+      <h2>Name this stop</h2>
+      <p class="muted">It will snap to the nearest point on the route.</p>
+    </div>
+    <button class="icon-btn" type="button" data-close-dialog aria-label="Close">&times;</button>
+  </div>
+  <form class="modal-body" id="stop-form">
+    <div class="field">
+      <label for="stop-name">Stop name</label>
+      <input id="stop-name" type="text" maxlength="80" required placeholder="e.g. Market Gate">
+    </div>
+    <div id="stop-dialog-error" class="alert alert-error hidden"></div>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Add stop</button>
+      <button class="btn btn-ghost" type="button" data-close-dialog>Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="application/json" id="route-editor-data">{{ {
+  "mode": mode,
+  "routeId": route.id if route else None,
+  "name": route.name if route else "",
+  "waypoints": waypoints,
+  "geometry": geometry,
+  "stops": stops_data,
+  "school": school
+}|tojson }}</script>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
+<script src="{{ url_for('static', filename='js/route-editor.js') }}"></script>
+{% endblock %}

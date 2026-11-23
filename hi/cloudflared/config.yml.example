@@ -1,0 +1,18 @@
+# ---------------------------------------------------------------------------
+# Cloudflare Tunnel configuration EXAMPLE
+#
+# 1. Copy this file to cloudflared\config.yml
+# 2. Replace the two YOUR_... placeholders with your own values.
+# 3. Keep this real config.yml private (it is in .gitignore).
+#
+# The tunnel forwards public HTTPS traffic to the local Waitress server.
+# Do NOT change the service to a public IP or open port 8000 on your router.
+# ---------------------------------------------------------------------------
+
+tunnel: YOUR_TUNNEL_UUID
+credentials-file: C:\Users\YOUR_WINDOWS_USERNAME\.cloudflared\YOUR_TUNNEL_UUID.json
+
+ingress:
+  - hostname: bus.yourdomain.com
+    service: http://127.0.0.1:8000
+  - service: http_status:404
